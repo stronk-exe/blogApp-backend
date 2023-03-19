@@ -1,4 +1,5 @@
 import User from '../models/User'
+import bcrypt from 'bcryptjs'
 
 export const getAllUsers = async (req, res, next) => {
     let users
@@ -13,7 +14,7 @@ export const getAllUsers = async (req, res, next) => {
     return res.status(200).json({ users })
 }
 
-export const createUser = async (req, res, next) => {
+export const signup = async (req, res, next) => {
     const { name, email, password } = req.body
 
     let existingUser
@@ -25,7 +26,9 @@ export const createUser = async (req, res, next) => {
 
     if (existingUser)
         return res.status(400).json({ message: 'user alerady exists!' })
-    const user = new User({ name, email, password })
+    
+    const hashedPassword = bcrypt.hashSync(password)
+    const user = new User({ name, email, password:hashedPassword, blogs: [] })
 
     try {
         await user.save()
@@ -33,4 +36,24 @@ export const createUser = async (req, res, next) => {
         console.log(err)
     }
     return res.status(201).json({ user })
+}
+
+export const login = async (req, res, next) => {
+    const {email, password} = req.body
+    let existingUser
+
+    try {
+        existingUser = await User.find(email)
+    }
+    catch (err) {
+        console.log(err)
+    }
+
+    if (!existingUser)
+        res.status(404).json({ message: 'user not found!' })
+    
+    const isPasswordCorrect = bcrypt.compareSync(password, existingUser.password)
+    if (!isPasswordCorrect)
+        res.status(400).json({ message: 'Incorrect password!' })
+    res.status(200).json({ message: 'login successfull' })
 }
